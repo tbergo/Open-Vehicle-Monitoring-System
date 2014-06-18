@@ -29,6 +29,9 @@
 #include <string.h>
 #include "ovms.h"
 #include "params.h"
+#ifdef OVMS_ACCMODULE
+#include "acc.h"
+#endif
 
 #pragma udata VEHICLE
 unsigned int  can_granular_tick;             // An internal ticker used to generate 1min, 5min, etc, calls
@@ -295,14 +298,20 @@ void high_isr(void)
     can_databuffer[7] = RXB0D7;
     RXB0CONbits.RXFUL = 0; // All bytes read, Clear flag
 #ifdef OVMS_POLLER
-    if ((vehicle_poll_plist != NULL)&&
-        (can_id >= vehicle_poll_moduleid_low)&&
-        (can_id <= vehicle_poll_moduleid_high))
+    if (vehicle_poll_plist != NULL)
       {
-      if (vehicle_poll_poll0())
+      if ((can_id >= vehicle_poll_moduleid_low)&&
+          (can_id <= vehicle_poll_moduleid_high))
         {
-        vehicle_fn_poll0();
+        if (vehicle_poll_poll0())
+          {
+          vehicle_fn_poll0();
+          }
         }
+      }
+    else
+      {
+      vehicle_fn_poll0();
       }
 #else // #ifdef OVMS_POLLER
     vehicle_fn_poll0();
@@ -541,6 +550,9 @@ void vehicle_ticker(void)
         ((car_chargelimit_soclimit>0)&&(car_SOC>=car_chargelimit_soclimit)))
       {
       // Charge has hit the limit, so can be stopped
+#ifdef OVMS_ACCMODULE
+      acc_handle_msg(FALSE, 12, NULL);
+#endif
       vehicle_fn_commandhandler(FALSE, 12, NULL); // Stop charge
       }
     }
